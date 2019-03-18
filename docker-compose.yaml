@@ -9,10 +9,10 @@ services:
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_CA_NAME=ca.realdirect.com
-      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1.example.com-cert.pem
-      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/4239aa0dcd76daeeb8ba0cda701851d14504d31aad1b2ddddbac6a57365e497c_sk
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.nsdl.realdirect.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/0fddee7c191a66359dee89d7d064ed80504d97ead005b42c77e52b74c92075cb_sk
     ports:
-      - "7054:7054"
+      - 7054:7054
     command: sh -c 'fabric-ca-server start -b admin:adminpw'
     volumes:
       - ./crypto-config/peerOrganizations/nsdl.realdirect.com/ca/:/etc/hyperledger/fabric-ca-server-config
@@ -71,6 +71,7 @@ services:
       - 7053:7053
     volumes:
         - /var/run/:/host/var/run/
+        - ./chaincode:/opt/gopath/src/github.com
         - ./crypto-config/peerOrganizations/nsdl.realdirect.com/peers/peer0.nsdl.realdirect.com/msp:/etc/hyperledger/msp/peer
         - ./crypto-config/peerOrganizations/nsdl.realdirect.com/users:/etc/hyperledger/msp/users
         - ./config:/etc/hyperledger/configtx
@@ -111,7 +112,7 @@ services:
     command: /bin/bash
     volumes:
         - /var/run/:/host/var/run/
-        - ./chaincode:/opt/gopath/src/github.com/
+        - ./chaincode:/opt/gopath/src/github.com
         - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
         - ./crypto-config/peerOrganizations/nsdl.realdirect.com/users:/etc/hyperledger/msp/users
     networks:

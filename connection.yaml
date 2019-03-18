@@ -1,0 +1,33 @@
+---
+name: realdirect_realdirect
+version: 1.0.0
+client:
+    organization: RealDirectNSDL
+    connection:
+        timeout:
+            peer:
+                endorser: '300'
+            orderer: '300'
+channels:
+    mychannel:
+        orderers:
+        - orderer.realdirect.com
+        peers:
+            peer0.nsdl.realdirect.com: {}
+organizations:
+    Org1:
+        mspid: RealDirectNSDLMSP
+        peers:
+        - peer0.nsdl.realdirect.com
+        certificateAuthorities:
+        - ca.realdirect.com
+orderers:
+    orderer.realdirect.com:
+        url: grpc://localhost:7050
+peers:
+    peer0.nsdl.realdirect.com:
+        url: grpc://localhost:7051
+certificateAuthorities:
+    ca.example.com:
+        url: http://localhost:7054
+        caName: ca.realdirect.com
