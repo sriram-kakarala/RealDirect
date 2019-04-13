@@ -11,3 +11,4 @@ Generate New Crypto Assets
     -- Open a terminal and navigate to source path
     -- ./setup_and_initiate_network.sh
     -- Will fire up all the instances, create the channel, deploy and install the chaincode.
+    -- Start Couch at http://localhost:5984/_utils/#/_all_dbs
