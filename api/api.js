@@ -37,7 +37,7 @@ async function main() {
         const network = await gateway.getNetwork('realdirectchannel');
 
         // Get the contract from the network.
-        const contract = network.getContract('realdirect3');
+        const contract = network.getContract('realdirect6');
 
         // Submit the specified transaction.
         if(argv.target == 'initasset') {

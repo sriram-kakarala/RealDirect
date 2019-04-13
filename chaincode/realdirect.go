@@ -25,8 +25,9 @@ type SimpleChaincode struct {
 type asset struct {
 	ObjectType string `json:"docType"` //docType is used to distinguish the various types of objects in state database
 	Name       string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
-	Quantity   int    `json:"qauntity"`
+	Quantity   int    `json:"quantity"`
 	Owner      string `json:"owner"`
+	Price      int    `json:"price"`
 }
 
 type assetPrivateDetails struct {
@@ -98,7 +99,7 @@ func (t *SimpleChaincode) initasset(stub shim.ChaincodeStubInterface, args []str
 
 	type assetTransientInput struct {
 		Name     string `json:"name"` //the fieldtags are needed to keep case from bouncing around
-		Quantity int    `json:"qauntity"`
+		Quantity int    `json:"quantity"`
 		Owner    string `json:"owner"`
 		Price    int    `json:"price"`
 	}
@@ -115,11 +116,11 @@ func (t *SimpleChaincode) initasset(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error("Error getting transient: " + err.Error())
 	}
 
-	if _, ok := transMap["asset"]; !ok {
+	if _, ok := transMap["name"]; !ok {
 		return shim.Error("asset must be a key in the transient map")
 	}
 
-	if len(transMap["asset"]) == 0 {
+	if len(transMap["name"]) == 0 {
 		return shim.Error("asset value in the transient map must be a non-empty JSON string")
 	}
 
@@ -522,7 +523,7 @@ func (t *SimpleChaincode) queryassets(stub shim.ChaincodeStubInterface, args []s
 // =========================================================================================
 func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
 
-	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+	fmt.Printf("- getQueryResultForQueryString-Sriram queryString:\n%s\n", queryString)
 
 	resultsIterator, err := stub.GetPrivateDataQueryResult("collectionassets", queryString)
 	if err != nil {
