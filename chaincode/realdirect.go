@@ -12,7 +12,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -23,17 +25,12 @@ type SimpleChaincode struct {
 }
 
 type asset struct {
-	ObjectType string `json:"docType"` //docType is used to distinguish the various types of objects in state database
-	Name       string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
-	Quantity   int    `json:"quantity"`
-	Owner      string `json:"owner"`
-	Price      int    `json:"price"`
-}
-
-type assetPrivateDetails struct {
-	ObjectType string `json:"docType"` //docType is used to distinguish the various types of objects in state database
-	Name       string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
-	Price      int    `json:"price"`
+	ObjectType  string `json:"docType"` //docType is used to distinguish the various types of objects in state database
+	Name        string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
+	DisplayName string `json:"displayname"`
+	Quantity    int    `json:"quantity"`
+	Owner       string `json:"owner"`
+	Price       int    `json:"price"`
 }
 
 // ===================================================================================
@@ -66,9 +63,6 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "readasset":
 		//read a asset
 		return t.readasset(stub, args)
-	case "readassetPrivateDetails":
-		//read a asset private details
-		return t.readassetPrivateDetails(stub, args)
 	case "transferasset":
 		//change owner of a specific asset
 		return t.transferasset(stub, args)
@@ -81,9 +75,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "queryassets":
 		//find assets based on an ad hoc rich query
 		return t.queryassets(stub, args)
-	case "getassetsByRange":
-		//get assets based on range query
-		return t.getassetsByRange(stub, args)
+	case "getHistoryForAsset":
+		return t.getHistoryForAsset(stub, args)
+	case "queryMarblesWithPagination":
+		return t.queryAssetsWithPagination(stub, args)
 	default:
 		//error
 		fmt.Println("invoke did not find func: " + function)
@@ -97,100 +92,66 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 func (t *SimpleChaincode) initasset(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	var err error
 
-	type assetTransientInput struct {
-		Name     string `json:"name"` //the fieldtags are needed to keep case from bouncing around
-		Quantity int    `json:"quantity"`
-		Owner    string `json:"owner"`
-		Price    int    `json:"price"`
+	//   0       1       2     3
+	// "Name", "Quantity", "Owner", "Price"
+	if len(args) != 4 {
+		return shim.Error("Incorrect number of arguments. Expecting 4")
 	}
 
 	// ==== Input sanitation ====
 	fmt.Println("- start init asset")
-
-	if len(args) == 0 {
-		return shim.Error("Incorrect number of arguments. Private asset data must be passed in transient map.")
+	if len(args[0]) <= 0 {
+		return shim.Error("1st argument must be a non-empty string")
 	}
-
-	transMap, err := stub.GetTransient()
+	if len(args[1]) <= 0 {
+		return shim.Error("2nd argument must be a non-empty string")
+	}
+	if len(args[2]) <= 0 {
+		return shim.Error("3rd argument must be a non-empty string")
+	}
+	if len(args[3]) <= 0 {
+		return shim.Error("4th argument must be a non-empty string")
+	}
+	assetName := strings.ToLower(args[0])
+	assetDisplayName := args[0]
+	assetQuantity, err := strconv.Atoi(args[1])
 	if err != nil {
-		return shim.Error("Error getting transient: " + err.Error())
+		return shim.Error("Quanity must be a numeric string")
 	}
-
-	if _, ok := transMap["name"]; !ok {
-		return shim.Error("asset must be a key in the transient map")
-	}
-
-	if len(transMap["name"]) == 0 {
-		return shim.Error("asset value in the transient map must be a non-empty JSON string")
-	}
-
-	var assetInput assetTransientInput
-	err = json.Unmarshal(transMap["asset"], &assetInput)
+	assetOwner := strings.ToLower(args[2])
+	assetPrice, err := strconv.Atoi(args[3])
 	if err != nil {
-		return shim.Error("Failed to decode JSON of: " + string(transMap["asset"]))
-	}
-
-	if len(assetInput.Name) == 0 {
-		return shim.Error("name field must be a non-empty string")
-	}
-
-	if assetInput.Quantity <= 0 {
-		return shim.Error("quanity field must be a positive integer")
-	}
-	if len(assetInput.Owner) == 0 {
-		return shim.Error("owner field must be a non-empty string")
-	}
-	if assetInput.Price <= 0 {
-		return shim.Error("price field must be a positive integer")
+		return shim.Error("Price argument must be a numeric string")
 	}
 
 	// ==== Check if asset already exists ====
-	assetAsBytes, err := stub.GetPrivateData("collectionassets", assetInput.Name)
+	assetAsBytes, err := stub.GetState(assetName)
 	if err != nil {
 		return shim.Error("Failed to get asset: " + err.Error())
 	} else if assetAsBytes != nil {
-		fmt.Println("This asset already exists: " + assetInput.Name)
-		return shim.Error("This asset already exists: " + assetInput.Name)
+		fmt.Println("This asset already exists: " + assetName)
+		return shim.Error("This asset already exists: " + assetName)
 	}
 
-	// ==== Create asset object, marshal to JSON, and save to state ====
-	asset := &asset{
-		ObjectType: "asset",
-		Name:       assetInput.Name,
-		Quantity:   assetInput.Quantity,
-		Owner:      assetInput.Owner,
-	}
+	// ==== Create asset object and marshal to JSON ====
+	objectType := "asset"
+	asset := &asset{objectType, assetName, assetDisplayName, assetQuantity, assetOwner, assetPrice}
 	assetJSONasBytes, err := json.Marshal(asset)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
 	// === Save asset to state ===
-	err = stub.PutPrivateData("collectionassets", assetInput.Name, assetJSONasBytes)
+	err = stub.PutState(assetName, assetJSONasBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	// ==== Create asset private details object with price, marshal to JSON, and save to state ====
-	assetPrivateDetails := &assetPrivateDetails{
-		ObjectType: "assetPrivateDetails",
-		Name:       assetInput.Name,
-		Price:      assetInput.Price,
-	}
-	assetPrivateDetailsBytes, err := json.Marshal(assetPrivateDetails)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	err = stub.PutPrivateData("collectionassetPrivateDetails", assetInput.Name, assetPrivateDetailsBytes)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	//  ==== Index the asset to enable owner-based range queries, e.g. return all Sriram's assets ====
+	//  ==== Index the asset to enable color-based range queries, e.g. return all assets belonging to Sriram ====
 	//  An 'index' is a normal key/value entry in state.
 	//  The key is a composite key, with the elements that you want to range query on listed first.
-	//  In our case, the composite key is based on indexName~owner~name.
-	//  This will enable very efficient state range queries based on composite keys matching indexName~owner~*
+	//  In our case, the composite key is based on indexName~color~name.
+	//  This will enable very efficient state range queries based on composite keys matching indexName~color~*
 	indexName := "owner~name"
 	ownerNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{asset.Owner, asset.Name})
 	if err != nil {
@@ -199,7 +160,7 @@ func (t *SimpleChaincode) initasset(stub shim.ChaincodeStubInterface, args []str
 	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the asset.
 	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
 	value := []byte{0x00}
-	stub.PutPrivateData("collectionassets", ownerNameIndexKey, value)
+	stub.PutState(ownerNameIndexKey, value)
 
 	// ==== asset saved and indexed. Return success ====
 	fmt.Println("- end init asset")
@@ -217,37 +178,13 @@ func (t *SimpleChaincode) readasset(stub shim.ChaincodeStubInterface, args []str
 		return shim.Error("Incorrect number of arguments. Expecting name of the asset to query")
 	}
 
-	name = args[0]
-	valAsbytes, err := stub.GetPrivateData("collectionassets", name) //get the asset from chaincode state
+	name = strings.ToLower(args[0])
+	valAsbytes, err := stub.GetState(name) //get the asset from chaincode state
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
 		return shim.Error(jsonResp)
 	} else if valAsbytes == nil {
-		jsonResp = "{\"Error\":\"asset does not exist: " + name + "\"}"
-		return shim.Error(jsonResp)
-	}
-
-	return shim.Success(valAsbytes)
-}
-
-// ===============================================
-// readassetreadassetPrivateDetails - read a asset private details from chaincode state
-// ===============================================
-func (t *SimpleChaincode) readassetPrivateDetails(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-	var name, jsonResp string
-	var err error
-
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting name of the asset to query")
-	}
-
-	name = args[0]
-	valAsbytes, err := stub.GetPrivateData("collectionassetPrivateDetails", name) //get the asset private details from chaincode state
-	if err != nil {
-		jsonResp = "{\"Error\":\"Failed to get private details for " + name + ": " + err.Error() + "\"}"
-		return shim.Error(jsonResp)
-	} else if valAsbytes == nil {
-		jsonResp = "{\"Error\":\"asset private details does not exist: " + name + "\"}"
+		jsonResp = "{\"Error\":\"Asset does not exist: " + name + "\"}"
 		return shim.Error(jsonResp)
 	}
 
@@ -258,76 +195,46 @@ func (t *SimpleChaincode) readassetPrivateDetails(stub shim.ChaincodeStubInterfa
 // delete - remove a asset key/value pair from state
 // ==================================================
 func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-	fmt.Println("- start delete asset")
-
-	type assetDeleteTransientInput struct {
-		Name string `json:"name"`
+	var jsonResp string
+	var assetJSON asset
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
-
-	if len(args) != 0 {
-		return shim.Error("Incorrect number of arguments. Private asset name must be passed in transient map.")
-	}
-
-	transMap, err := stub.GetTransient()
-	if err != nil {
-		return shim.Error("Error getting transient: " + err.Error())
-	}
-
-	if _, ok := transMap["asset_delete"]; !ok {
-		return shim.Error("asset_delete must be a key in the transient map")
-	}
-
-	if len(transMap["asset_delete"]) == 0 {
-		return shim.Error("asset_delete value in the transient map must be a non-empty JSON string")
-	}
-
-	var assetDeleteInput assetDeleteTransientInput
-	err = json.Unmarshal(transMap["asset_delete"], &assetDeleteInput)
-	if err != nil {
-		return shim.Error("Failed to decode JSON of: " + string(transMap["asset_delete"]))
-	}
-
-	if len(assetDeleteInput.Name) == 0 {
-		return shim.Error("name field must be a non-empty string")
-	}
+	assetName := strings.ToLower(args[0])
 
 	// to maintain the owner~name index, we need to read the asset first and get its owner
-	valAsbytes, err := stub.GetPrivateData("collectionassets", assetDeleteInput.Name) //get the asset from chaincode state
+	valAsbytes, err := stub.GetState(assetName) //get the asset from chaincode state
 	if err != nil {
-		return shim.Error("Failed to get state for " + assetDeleteInput.Name)
+		jsonResp = "{\"Error\":\"Failed to get state for " + assetName + "\"}"
+		return shim.Error(jsonResp)
 	} else if valAsbytes == nil {
-		return shim.Error("asset does not exist: " + assetDeleteInput.Name)
+		jsonResp = "{\"Error\":\"Asset does not exist: " + assetName + "\"}"
+		return shim.Error(jsonResp)
 	}
 
-	var assetToDelete asset
-	err = json.Unmarshal([]byte(valAsbytes), &assetToDelete)
+	err = json.Unmarshal([]byte(valAsbytes), &assetJSON)
 	if err != nil {
-		return shim.Error("Failed to decode JSON of: " + string(valAsbytes))
+		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + assetName + "\"}"
+		return shim.Error(jsonResp)
 	}
 
-	// delete the asset from state
-	err = stub.DelPrivateData("collectionassets", assetDeleteInput.Name)
+	err = stub.DelState(assetName) //remove the asset from chaincode state
 	if err != nil {
 		return shim.Error("Failed to delete state:" + err.Error())
 	}
 
-	// Also delete the asset from the owner~name index
+	// maintain the index
 	indexName := "owner~name"
-	ownerNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{assetToDelete.Owner, assetToDelete.Name})
+	ownerNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{assetJSON.Owner, assetJSON.Name})
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.DelPrivateData("collectionassets", ownerNameIndexKey)
+
+	//  Delete index entry to state.
+	err = stub.DelState(ownerNameIndexKey)
 	if err != nil {
 		return shim.Error("Failed to delete state:" + err.Error())
 	}
-
-	// Finally, delete private details of asset
-	err = stub.DelPrivateData("collectionassetPrivateDetails", assetDeleteInput.Name)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
 	return shim.Success(nil)
 }
 
@@ -336,48 +243,21 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 // ===========================================================
 func (t *SimpleChaincode) transferasset(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
-	fmt.Println("- start transfer asset")
-
-	type assetTransferTransientInput struct {
-		Name  string `json:"name"`
-		Owner string `json:"owner"`
+	//   0       1
+	// "name", "newowner"
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
 
-	if len(args) != 0 {
-		return shim.Error("Incorrect number of arguments. Private asset data must be passed in transient map.")
-	}
+	assetName := strings.ToLower(args[0])
+	newOwner := strings.ToLower(args[1])
+	fmt.Println("- start transferAsset ", assetName, newOwner)
 
-	transMap, err := stub.GetTransient()
-	if err != nil {
-		return shim.Error("Error getting transient: " + err.Error())
-	}
-
-	if _, ok := transMap["asset_owner"]; !ok {
-		return shim.Error("asset_owner must be a key in the transient map")
-	}
-
-	if len(transMap["asset_owner"]) == 0 {
-		return shim.Error("asset_owner value in the transient map must be a non-empty JSON string")
-	}
-
-	var assetTransferInput assetTransferTransientInput
-	err = json.Unmarshal(transMap["asset_owner"], &assetTransferInput)
-	if err != nil {
-		return shim.Error("Failed to decode JSON of: " + string(transMap["asset_owner"]))
-	}
-
-	if len(assetTransferInput.Name) == 0 {
-		return shim.Error("name field must be a non-empty string")
-	}
-	if len(assetTransferInput.Owner) == 0 {
-		return shim.Error("owner field must be a non-empty string")
-	}
-
-	assetAsBytes, err := stub.GetPrivateData("collectionassets", assetTransferInput.Name)
+	assetAsBytes, err := stub.GetState(assetName)
 	if err != nil {
 		return shim.Error("Failed to get asset:" + err.Error())
 	} else if assetAsBytes == nil {
-		return shim.Error("asset does not exist: " + assetTransferInput.Name)
+		return shim.Error("Asset does not exist")
 	}
 
 	assetToTransfer := asset{}
@@ -385,74 +265,40 @@ func (t *SimpleChaincode) transferasset(stub shim.ChaincodeStubInterface, args [
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	assetToTransfer.Owner = assetTransferInput.Owner //change the owner
+
+	indexName := "owner~name"
+	ownerNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{assetToTransfer.Owner, assetToTransfer.Name})
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	//  Delete index entry to state.
+	err = stub.DelState(ownerNameIndexKey)
+	if err != nil {
+		return shim.Error("Failed to delete state:" + err.Error())
+	}
+
+	//change the owner
+	assetToTransfer.Owner = newOwner
 
 	assetJSONasBytes, _ := json.Marshal(assetToTransfer)
-	err = stub.PutPrivateData("collectionassets", assetToTransfer.Name, assetJSONasBytes) //rewrite the asset
+	err = stub.PutState(assetName, assetJSONasBytes) //rewrite the asset
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	fmt.Println("- end transferasset (success)")
+	//  ==== Update the index
+	newOwnerNameIndexKey, err := stub.CreateCompositeKey(indexName, []string{assetToTransfer.Owner, assetToTransfer.Name})
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the asset.
+	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
+	value := []byte{0x00}
+	stub.PutState(newOwnerNameIndexKey, value)
+
+	fmt.Println("- end transferAsset (success)")
 	return shim.Success(nil)
-}
-
-// ===========================================================================================
-// getassetsByRange performs a range query based on the start and end keys provided.
-
-// Read-only function results are not typically submitted to ordering. If the read-only
-// results are submitted to ordering, or if the query is used in an update transaction
-// and submitted to ordering, then the committing peers will re-execute to guarantee that
-// result sets are stable between endorsement time and commit time. The transaction is
-// invalidated by the committing peers if the result set has changed between endorsement
-// time and commit time.
-// Therefore, range queries are a safe option for performing update transactions based on query results.
-// ===========================================================================================
-func (t *SimpleChaincode) getassetsByRange(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-
-	if len(args) < 2 {
-		return shim.Error("Incorrect number of arguments. Expecting 2")
-	}
-
-	startKey := args[0]
-	endKey := args[1]
-
-	resultsIterator, err := stub.GetPrivateDataByRange("collectionassets", startKey, endKey)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	defer resultsIterator.Close()
-
-	// buffer is a JSON array containing QueryResults
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
-
-	bArrayMemberAlreadyWritten := false
-	for resultsIterator.HasNext() {
-		queryResponse, err := resultsIterator.Next()
-		if err != nil {
-			return shim.Error(err.Error())
-		}
-		// Add a comma before array members, suppress it for the first array member
-		if bArrayMemberAlreadyWritten == true {
-			buffer.WriteString(",")
-		}
-		buffer.WriteString("{\"Key\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(queryResponse.Key)
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"Record\":")
-		// Record is a JSON object, so we write as-is
-		buffer.WriteString(string(queryResponse.Value))
-		buffer.WriteString("}")
-		bArrayMemberAlreadyWritten = true
-	}
-	buffer.WriteString("]")
-
-	fmt.Printf("- getassetsByRange queryResult:\n%s\n", buffer.String())
-
-	return shim.Success(buffer.Bytes())
 }
 
 // =======Rich queries =========================================================================
@@ -523,15 +369,30 @@ func (t *SimpleChaincode) queryassets(stub shim.ChaincodeStubInterface, args []s
 // =========================================================================================
 func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
 
-	fmt.Printf("- getQueryResultForQueryString-Sriram queryString:\n%s\n", queryString)
+	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
 
-	resultsIterator, err := stub.GetPrivateDataQueryResult("collectionassets", queryString)
+	resultsIterator, err := stub.GetQueryResult(queryString)
 	if err != nil {
 		return nil, err
 	}
 	defer resultsIterator.Close()
 
-	// buffer is a JSON array containing QueryRecords
+	buffer, err := constructQueryResponseFromIterator(resultsIterator)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+
+	return buffer.Bytes(), nil
+}
+
+// ===========================================================================================
+// constructQueryResponseFromIterator constructs a JSON array containing query results from
+// a given result iterator
+// ===========================================================================================
+func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorInterface) (*bytes.Buffer, error) {
+	// buffer is a JSON array containing QueryResults
 	var buffer bytes.Buffer
 	buffer.WriteString("[")
 
@@ -558,7 +419,133 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 	}
 	buffer.WriteString("]")
 
-	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+	return &buffer, nil
+}
+
+func (t *SimpleChaincode) queryAssetsWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	//   0
+	// "queryString"
+	if len(args) < 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
+	}
+
+	queryString := args[0]
+	//return type of ParseInt is int64
+	pageSize, err := strconv.ParseInt(args[1], 10, 32)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	bookmark := args[2]
+
+	queryResults, err := getQueryResultForQueryStringWithPagination(stub, queryString, int32(pageSize), bookmark)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(queryResults)
+}
+
+func getQueryResultForQueryStringWithPagination(stub shim.ChaincodeStubInterface, queryString string, pageSize int32, bookmark string) ([]byte, error) {
+
+	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+
+	resultsIterator, responseMetadata, err := stub.GetQueryResultWithPagination(queryString, pageSize, bookmark)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	buffer, err := constructQueryResponseFromIterator(resultsIterator)
+	if err != nil {
+		return nil, err
+	}
+
+	bufferWithPaginationInfo := addPaginationMetadataToQueryResults(buffer, responseMetadata)
+
+	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", bufferWithPaginationInfo.String())
 
 	return buffer.Bytes(), nil
+}
+
+// ===========================================================================================
+// addPaginationMetadataToQueryResults adds QueryResponseMetadata, which contains pagination
+// info, to the constructed query results
+// ===========================================================================================
+func addPaginationMetadataToQueryResults(buffer *bytes.Buffer, responseMetadata *pb.QueryResponseMetadata) *bytes.Buffer {
+
+	buffer.WriteString("[{\"ResponseMetadata\":{\"RecordsCount\":")
+	buffer.WriteString("\"")
+	buffer.WriteString(fmt.Sprintf("%v", responseMetadata.FetchedRecordsCount))
+	buffer.WriteString("\"")
+	buffer.WriteString(", \"Bookmark\":")
+	buffer.WriteString("\"")
+	buffer.WriteString(responseMetadata.Bookmark)
+	buffer.WriteString("\"}}]")
+
+	return buffer
+}
+
+func (t *SimpleChaincode) getHistoryForAsset(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+
+	if len(args) < 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	assetName := strings.ToLower(args[0])
+
+	fmt.Printf("- start getHistoryForAsset: %s\n", assetName)
+
+	resultsIterator, err := stub.GetHistoryForKey(assetName)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing historic values for the asset
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"TxId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(response.TxId)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Value\":")
+		// if it was a delete operation on given key, then we need to set the
+		//corresponding value null. Else, we will write the response.Value
+		//as-is (as the Value itself a JSON asset)
+		if response.IsDelete {
+			buffer.WriteString("null")
+		} else {
+			buffer.WriteString(string(response.Value))
+		}
+
+		buffer.WriteString(", \"Timestamp\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"IsDelete\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(strconv.FormatBool(response.IsDelete))
+		buffer.WriteString("\"")
+
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf("- getHistoryForAsset returning:\n%s\n", buffer.String())
+
+	return shim.Success(buffer.Bytes())
 }

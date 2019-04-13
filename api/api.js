@@ -37,14 +37,21 @@ async function main() {
         const network = await gateway.getNetwork('realdirectchannel');
 
         // Get the contract from the network.
-        const contract = network.getContract('realdirect6');
+        const contract = network.getContract('realdirect');
 
         // Submit the specified transaction.
         if(argv.target == 'initasset') {
-            await contract.submitTransaction('initasset', "Reliance", "1", "Sriram", "200");
+            console.log('attempting the transaction');
+            await contract.submitTransaction('initasset', argv.name, "" + argv.quantity, argv.owner, "" + argv.price);
             console.log('Transaction has been submitted');
-        } else if(argv.target == 'changeCarOwner'){
-            await contract.submitTransaction('changeCarOwner', argv.number, argv.owner);
+        } else if(argv.target == 'readasset'){
+            await contract.submitTransaction('readasset', argv.name);
+            console.log('Transaction has been submitted');
+        } else if(argv.target == 'delete'){
+            await contract.submitTransaction('delete', argv.name);
+            console.log('Transaction has been submitted');
+        } else if(argv.target == 'transferasset'){
+            await contract.submitTransaction('transferasset', argv.name, argv.owner);
             console.log('Transaction has been submitted');
         } else {
             console.log('Invalid Transaction!! Invoke with --target=[createCar|changeCarOwner]');

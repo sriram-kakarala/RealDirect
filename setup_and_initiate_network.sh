@@ -27,7 +27,6 @@ docker exec -e "CORE_PEER_LOCALMSPID=RealDirectNSDLMSP" -e "CORE_PEER_MSPCONFIGP
 
 # Install
 docker exec -e "CORE_PEER_LOCALMSPID=RealDirectNSDLMSP" -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@nsdl.realdirect.com/msp" cli peer chaincode install -n realdirect -v 1.0 -p "github.com/" -l "golang"
-# docker exec -e "CORE_PEER_LOCALMSPID=RealDirectNSDLMSP" -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@nsdl.realdirect.com/msp" cli peer chaincode upgrade -n realdirect6 -C realdirectchannel -c '{"Args":[]}' -v 2.2 -p "github.com/" -l "golang"
 
 # Initiate
 docker exec -e "CORE_PEER_LOCALMSPID=RealDirectNSDLMSP" -e "CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/users/Admin@nsdl.realdirect.com/msp" cli peer chaincode instantiate -o orderer.realdirect.com:7050 -C realdirectchannel -n realdirect -l "golang" -v 1.0 -c '{"Args":[]}' -P "OR ('RealDirectNSDLMSP.member','Org2MSP.member')"
