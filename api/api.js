@@ -45,8 +45,8 @@ async function main() {
             await contract.submitTransaction('initasset', argv.name, "" + argv.quantity, argv.owner, "" + argv.price);
             console.log('Transaction has been submitted');
         } else if(argv.target == 'readasset'){
-            await contract.submitTransaction('readasset', argv.name);
-            console.log('Transaction has been submitted');
+            const result = await contract.evaluateTransaction('readasset', argv.name);
+            console.log(`Transaction has been evaluated, result is: ${result.toString()}`);
         } else if(argv.target == 'delete'){
             await contract.submitTransaction('delete', argv.name);
             console.log('Transaction has been submitted');
