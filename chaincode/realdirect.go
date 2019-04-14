@@ -24,6 +24,14 @@ import (
 type SimpleChaincode struct {
 }
 
+type user struct {
+	ObjectType  string `json:"docType"` //docType is used to distinguish the various types of objects in state database
+	Name        string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
+	DisplayName string `json:"displayname"`
+	Password    string `json:"password"`
+	Email       string `json:"email"`
+}
+
 type asset struct {
 	ObjectType  string `json:"docType"` //docType is used to distinguish the various types of objects in state database
 	Name        string `json:"name"`    //the fieldtags are needed to keep case from bouncing around
@@ -57,6 +65,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	// Handle different functions
 	switch function {
+	case "inituser":
+		return t.inituser(stub, args)
+	case "signinuser":
+		return t.signinuser(stub, args)
 	case "initasset":
 		//create a new asset
 		return t.initasset(stub, args)
@@ -84,6 +96,98 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		fmt.Println("invoke did not find func: " + function)
 		return shim.Error("Received unknown function invocation")
 	}
+}
+
+func (t *SimpleChaincode) inituser(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var err error
+
+	//   0       1
+	// "Name", "Password"
+	if len(args) != 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
+	}
+
+	// ==== Input sanitation ====
+	fmt.Println("- start init asset")
+	if len(args[0]) <= 0 {
+		return shim.Error("Username cannot be empty")
+	}
+	if len(args[1]) <= 0 {
+		return shim.Error("Password cannot be empty")
+	}
+
+	userName := strings.ToLower(args[0])
+	userDisplayName := args[0]
+	userEmail := strings.ToLower(args[1])
+	userPassword := args[2]
+
+	// ==== Check if asset already exists ====
+	userAsBytes, err := stub.GetState(userEmail)
+	if err != nil {
+		return shim.Error("Failed to get user: " + err.Error())
+	} else if userAsBytes != nil {
+		fmt.Println("This user already exists: " + userName)
+		return shim.Error("300")
+	}
+
+	// ==== Create asset object and marshal to JSON ====
+	objectType := "user"
+	user := &user{objectType, userName, userDisplayName, userPassword, userEmail}
+	userJSONasBytes, err := json.Marshal(user)
+	if err != nil {
+		return shim.Error("301")
+	}
+
+	// === Save asset to state ===
+	err = stub.PutState(userEmail, userJSONasBytes)
+	if err != nil {
+		return shim.Error("302")
+	}
+
+	return shim.Success(nil)
+}
+
+func (t *SimpleChaincode) signinuser(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	var err error
+
+	//   0       1
+	// "email", "Password"
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	// ==== Input sanitation ====
+	fmt.Println("- start init asset")
+	if len(args[0]) <= 0 {
+		return shim.Error("Username cannot be empty")
+	}
+	if len(args[1]) <= 0 {
+		return shim.Error("Password cannot be empty")
+	}
+
+	userEmail := strings.ToLower(args[0])
+	userPassword := args[1]
+
+	// ==== Check if asset already exists ====
+	userAsBytes, err := stub.GetState(userEmail)
+	if err != nil {
+		return shim.Error("Failed to get user: " + err.Error())
+	} else if userAsBytes == nil {
+		fmt.Println("User does not exist: " + userEmail)
+		return shim.Error("300")
+	}
+
+	var userJSON user
+	err = json.Unmarshal(userAsBytes, &userJSON)
+	if err != nil {
+		return shim.Error("301")
+	}
+
+	if userJSON.Password == userPassword {
+		return shim.Success(nil)
+	}
+
+	return shim.Error("302")
 }
 
 // ============================================================

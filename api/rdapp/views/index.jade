@@ -1,0 +1,16 @@
+extends layout
+
+block content
+  img(src="images/globe.png", alt="RD", style="margin-left: 45%")
+  h1(id = "title",  align="center")=title
+  p(align="center") Digital Asset Trading Made Easy
+  <form action="/signin" method = "get" style="margin-left: 44%">
+  button(style="width: 150px; display: block; border: none; background-color: #3F51B5; color: #FFFFFF; padding: 14px 28px; font-size: 16px; cursor: pointer; text-align: center;") SignIn
+  </form>
+  <form action="/signup" method = "get" style="margin-left: 44%">
+  <div style="margin-top: 10px" >
+  button(style="width: 150px; display: block; border: none; background-color: #4CAF50; color: #FFFFFF; padding: 14px 28px; font-size: 16px; cursor: pointer; text-align: center;") SignUp
+  </div>
+  </form>
+
+

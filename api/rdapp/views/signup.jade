@@ -1,0 +1,24 @@
+extends layout
+
+block content
+  img(src="images/globe.png", alt="RD", style="margin-left: 45%")
+  h1(id = "title",  align="center")=title
+  p(align="center") Digital Asset Trading Made Easy
+  
+  p(align="center" style="color:green;")  #{msg}
+  p(align="center" style="color:red;") #{err}
+
+  <form action="/signup" method = "post" align="center">
+  <div align="center">
+  <input type="text" placeholder="Name" name="name" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
+  </div>
+  <div align="center">
+  <input type="text" placeholder="E-Mail" name="email" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
+  </div>
+  <div align="center">
+  <input type="password" placeholder="Password" name="password"  style="display: inline-block; padding: 12px 20px; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
+  </div>
+  <div align="center">
+  button(style="margin-top: 20px; width: 150px; display: block; border: none; background-color: #4CAF50; color: #FFFFFF; padding: 14px 28px; font-size: 16px; cursor: pointer; text-align: center;") SignUp
+  </div>
+  <form>

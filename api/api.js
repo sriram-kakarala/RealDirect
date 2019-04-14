@@ -40,7 +40,12 @@ async function main() {
         const contract = network.getContract('realdirect');
 
         // Submit the specified transaction.
-        if(argv.target == 'initasset') {
+        if(argv.target == 'reguser') {
+            console.log('attempting the transaction');
+            await contract.submitTransaction('inituser', argv.name, argv.email, argv.password);
+            console.log('Transaction has been submitted');
+        }
+        else if(argv.target == 'initasset') {
             console.log('attempting the transaction');
             await contract.submitTransaction('initasset', argv.name, "" + argv.quantity, argv.owner, "" + argv.price);
             console.log('Transaction has been submitted');
