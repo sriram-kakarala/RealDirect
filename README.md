@@ -11,10 +11,9 @@ Step 0: Download code to root directory
  
 
 *Try the ChainCode Way*
+Use this if you want to see the Demo based of Chaincode and Express. Step 0 is mandatory
 
-Generate New Crypto Assets
-
-Step 1. Run generate_crypto_assets.sh - If you want to generate new Genesis Blocks.
+Step 1. Generate New Crypto Assets. Run generate_crypto_assets.sh - If you want to generate new Genesis Blocks.
 
     -- This needs to be run once, or if you are cloning this repo, you can start with setup.sh
     -- Once you run, update the Private Key in docket-compose.yaml
@@ -25,9 +24,15 @@ Step 2. Happiness
     -- ./setup_and_initiate_network.sh
     -- Will fire up all the instances, create the channel, deploy and install the chaincode.
     -- Start Couch at http://localhost:5984/_utils/#/_all_dbs
+
+Step 3. Node App Happiness
+    -- Open a terminal and navigate to source path i.e uptil RealDirect    
+    -- cd into api/rdapp i.e $ cd api/rdapp
+    -- Fire away the instance $npm start
+    -- Ahoy!!!
     
 *Try the Composer Way*
-
+Use this if you want to see the componser Demo. Step 0 is mandatory
 
 Step 1. Open a Terminal, We assume that you have the basic fabric-dev-servers setup
 
