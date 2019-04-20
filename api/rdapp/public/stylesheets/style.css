@@ -70,6 +70,12 @@ a {
 
 }
 
+.tabdata {
+  color: #000000;
+  padding: 10px;
+
+}
+
 .purchase {
   color: rgb(130, 194, 95);
   text-transform: uppercase; 

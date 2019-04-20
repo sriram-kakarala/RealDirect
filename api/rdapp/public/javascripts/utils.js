@@ -31,7 +31,7 @@ function loadmyassets() {
                     html += '<tr  style="font-weight: bold padding: 5px" color: #000000;  align="center">';
                     for (key in data[i]) {
                         if(key != "name" && key != "docType" && key != "owner") {
-                            html += '<td>' + data[i][key] + '</td>';
+                            html += '<td class="tabdata">' + data[i][key] + '</td>';
                         }
                     }
                     html += '</tr>';
@@ -80,7 +80,7 @@ function loadallassets() {
                             name = data[i][key];
                         }
                         if(key != "name" && key != "docType") {
-                            html += '<td>' + data[i][key] + '</td>';
+                            html += '<td class="tabdata">' + data[i][key] + '</td>';
                             if(key == "owner") {
                                 owner = data[i][key];
                             }
@@ -88,7 +88,7 @@ function loadallassets() {
                     }
                     
                     if(myself == owner) {
-                        html += '<td> You Own It! </td>';
+                        html += '<td class="tabdata"> You Own It! </td>';
                     } else {
                         html += '<td id=' + name + ' class="purchase" onclick="purchase(event,\'' + name  + '\')"> Purchase </td>';
                     }
