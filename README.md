@@ -29,6 +29,7 @@ Step 3. Node App Happiness
     -- Open a terminal and navigate to source path i.e uptil RealDirect    
     -- cd into api/rdapp i.e $ cd api/rdapp
     -- Fire away the instance $npm start
+    -- Open http://localhost:3000
     -- Ahoy!!!
     
 *Try the Composer Way*
