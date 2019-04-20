@@ -61,3 +61,20 @@ a {
   border: 1px solid #ccc;
   border-top: none;
 }
+
+.tabheader {
+  color: #00B7FF;
+  text-transform: uppercase; 
+  padding: 10px;
+  font-weight: bold
+
+}
+
+.purchase {
+  color: rgb(130, 194, 95);
+  text-transform: uppercase; 
+  padding: 10px;
+  font-weight: bold;
+  cursor: pointer;
+
+}

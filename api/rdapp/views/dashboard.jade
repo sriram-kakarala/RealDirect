@@ -16,18 +16,20 @@ block content
   </form>
   <!-- Tab links -->
   <div class="tab">
-  <button class="tablinks" onclick="loadAssets(event, 'myAssets')">My Assets</button>
+  <button id = "myassets" class="tablinks" onclick="loadAssets(event, 'myAssets')">My Assets</button>
   <button class="tablinks" onclick="loadAssets(event, 'all')">All Assets</button>
   <button class="tablinks" onclick="loadAssets(event, 'createAsset')">Create Assets</button>
   </div>
   <!-- Tab content -->
   <div id="myAssets" class="tabcontent">
-  <h3>My Assets</h3>
-  <p>All your digital assets will be listed here.</p>
+  <h3 align="center">My Assets</h3>
+  <p align="center">All your digital assets will be listed here.</p>
+  <div id="assetsresponse" align="center"></div>
   </div>
   <div id="all" class="tabcontent">
   <h3>All Assets</h3>
   <p>The Assets being Traded on the System.</p> 
+  <div id="allassetsresponse" align="center"></div>
   </div>
   <div id="createAsset" class="tabcontent">
   <h3>Create a New Asset</h3>
@@ -35,13 +37,13 @@ block content
   <label id="message">
   </div>
   <div align="center">
-  <input id = "assetname" type="text" placeholder="Name of the Asset" name="name" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
+  <input id = "assetname" type="text" placeholder="Name of the Asset"  name="name" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
   </div>
   <div align="center">
-  <input id = "assetquantity"  type="text" placeholder="Quantity" name="quanity" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
+  <input id = "assetquantity"  type="number" min="1" max="500000000000"  placeholder="Quantity" name="quanity" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
   </div>
   <div align="center">
-  <input id = "assetprice" type="text" placeholder="Price" name="price" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
+  <input id = "assetprice" type="number" min="1" max="500000000000"  placeholder="Price" name="price" style="display: inline-block; padding: 12px 20px; margin: 8px 0; display: inline-block; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" required/>
   </div>
   <div align="center">
   button(onclick="createAsset()" style="margin-top: 20px; width: 150px; display: block; border: none; background-color: #3F51B5; color: #FFFFFF; padding: 14px 28px; font-size: 16px; cursor: pointer; text-align: center;") Create Asset

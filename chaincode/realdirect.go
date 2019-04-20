@@ -455,16 +455,20 @@ func (t *SimpleChaincode) queryassets(stub shim.ChaincodeStubInterface, args []s
 	//   0
 	// "queryString"
 	if len(args) < 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
+		queryString := "{\"selector\":{\"docType\":\"asset\"}}"
+		queryResults, err := getQueryResultForQueryString(stub, queryString)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success(queryResults)
+	} else {
+		queryString := args[0]
+		queryResults, err := getQueryResultForQueryString(stub, queryString)
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		return shim.Success(queryResults)
 	}
-
-	queryString := args[0]
-
-	queryResults, err := getQueryResultForQueryString(stub, queryString)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	return shim.Success(queryResults)
 }
 
 // =========================================================================================
@@ -510,15 +514,15 @@ func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorI
 		if bArrayMemberAlreadyWritten == true {
 			buffer.WriteString(",")
 		}
-		buffer.WriteString("{\"Key\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(queryResponse.Key)
-		buffer.WriteString("\"")
+		// buffer.WriteString("{\"Key\":")
+		// buffer.WriteString("\"")
+		// buffer.WriteString(queryResponse.Key)
+		// buffer.WriteString("\"")
 
-		buffer.WriteString(", \"Record\":")
+		// buffer.WriteString(", \"Record\":")
 		// Record is a JSON object, so we write as-is
 		buffer.WriteString(string(queryResponse.Value))
-		buffer.WriteString("}")
+		//buffer.WriteString("}")
 		bArrayMemberAlreadyWritten = true
 	}
 	buffer.WriteString("]")

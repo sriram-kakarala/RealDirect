@@ -159,12 +159,10 @@ chainCodeRouter.post('/createAsset', function(req, res, next) {
       res.redirect('/?title=' + "RealDirect");
     } else {
       var val = createAsset(cookie, req.body.name, req.body.quantity, req.body.price, res)
-      console.log("messsage " + val);
-      res.sendStatus(200)
     }
 });
 
-async function createAsset(email, name, quantity, price) {
+async function createAsset(email, name, quantity, price, res) {
     try {
   
           // Create a new file system based wallet for managing identities.
@@ -193,6 +191,118 @@ async function createAsset(email, name, quantity, price) {
           
           console.log('attempting the transaction');
           await contract.submitTransaction('initasset', name, quantity, email, price);
+          console.log('Transaction has been submitted');
+          // Disconnect from the gateway.
+          await gateway.disconnect();
+          res.sendStatus(200);
+      } catch (error) {
+          console.error(`Failed to submit transaction: ${error}`);
+          res.sendStatus(404);
+      }
+  }
+
+
+  chainCodeRouter.post('/queryassetsByOwner', function(req, res, next) {
+    var cookie = req.cookies['session'];
+      if(cookie === undefined) {
+        res.redirect('/?title=' + "RealDirect");
+      } else {
+        var val = queryassets(cookie, "my", res)
+      }
+  });
+
+  chainCodeRouter.post('/queryAllassets', function(req, res, next) {
+    var cookie = req.cookies['session'];
+      if(cookie === undefined) {
+        res.redirect('/?title=' + "RealDirect");
+      } else {
+        var val = queryassets(cookie, "all", res)
+      }
+  });
+
+  async function queryassets(email, type, res) {
+    try {
+  
+          // Create a new file system based wallet for managing identities.
+          const walletPath = path.resolve("", 'public/fabric', 'wallet');
+          const wallet = new FileSystemWallet(walletPath);
+          console.log(`Wallet path: ${walletPath}`);
+  
+          // Check to see if we've already enrolled the user.
+          const userExists = await wallet.exists('user1');
+          if (!userExists) {
+              console.log('An identity for the user "user1" does not exist in the wallet');
+              console.log('Run the registerUser.js application before retrying');
+              return;
+          }
+  
+          // Create a new gateway for connecting to our peer node.
+          const gateway = new Gateway();
+          await gateway.connect(ccp, { wallet, identity: 'user1', discovery: { enabled: false } });
+  
+          // Get the network (channel) our contract is deployed to.
+          const network = await gateway.getNetwork('realdirectchannel');
+  
+          // Get the contract from the network.
+          const contract = network.getContract('realdirect');
+  
+          
+          console.log('attempting the transaction');
+          var result = "";
+          if(type == "my") {
+            result = await contract.evaluateTransaction('queryassetsByOwner', email);
+          } else {
+            result = await contract.evaluateTransaction('queryassets');
+          }
+          console.log(result.toString());
+          console.log('Transaction has been submitted');
+          // Disconnect from the gateway.
+          await gateway.disconnect();
+          res.jsonp(result.toString());
+      } catch (error) {
+          console.error(`Failed to submit transaction: ${error}`);
+          res.sendStatus(404);
+      }
+  }
+
+  chainCodeRouter.post('/transferasset', function(req, res, next) {
+    var cookie = req.cookies['session'];
+      if(cookie === undefined) {
+        res.redirect('/?title=' + "RealDirect");
+      } else {
+        var val = transferasset(cookie, req.body.name, res)
+      }
+  });
+
+  async function transferasset(email, name, res) {
+    try {
+  
+          // Create a new file system based wallet for managing identities.
+          const walletPath = path.resolve("", 'public/fabric', 'wallet');
+          const wallet = new FileSystemWallet(walletPath);
+          console.log(`Wallet path: ${walletPath}`);
+  
+          // Check to see if we've already enrolled the user.
+          const userExists = await wallet.exists('user1');
+          if (!userExists) {
+              console.log('An identity for the user "user1" does not exist in the wallet');
+              console.log('Run the registerUser.js application before retrying');
+              return;
+          }
+  
+          // Create a new gateway for connecting to our peer node.
+          const gateway = new Gateway();
+          await gateway.connect(ccp, { wallet, identity: 'user1', discovery: { enabled: false } });
+  
+          // Get the network (channel) our contract is deployed to.
+          const network = await gateway.getNetwork('realdirectchannel');
+  
+          // Get the contract from the network.
+          const contract = network.getContract('realdirect');
+  
+          
+          console.log('attempting the transaction');
+          await contract.submitTransaction('transferasset', name, email);
           console.log('Transaction has been submitted');
           // Disconnect from the gateway.
           await gateway.disconnect();
